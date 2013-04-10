@@ -1,4 +1,5 @@
 <?php
+
 /*
 Plugin Name: Github MSync
 Plugin URI: http://moyo.uuland.org/github-msync/
@@ -138,6 +139,12 @@ class mgi
 	.status-box .sync-tips {
 		border-left: 10px solid #000;
 	}
+	.sync-form {
+		margin: 0;
+	}
+	.sync-form .sync-url {
+		width: 513px;
+	}
 </style>
 <div class="status-box">
 	<div>
@@ -153,6 +160,15 @@ class mgi
 				<a class="sym" href="<?php echo admin_url('plugins.php?page='.$this->mgr_link.'&op=sync'); ?>"><?php echo __('[Sync]'); ?></a>
 				<a class="sym" href="http://moyo.uuland.org/github-msync/" target="_blank"><?php echo __('[Help]'); ?></a>
 			</p>
+		</p>
+	</div>
+	<div>
+		<p class="title"><?php echo __('Sync from url'); ?></p>
+		<p>
+			<form class="sync-form" action="<?php echo admin_url('plugins.php?page='.$this->mgr_link.'&op=syncurl'); ?>" method="post">
+				<input class="sync-url" type="text" name="url" placeholder="https://raw.github.com/moolex/moyo.blogs/master/archives/github-msync.md" />
+				<input class="sync-submit" type="submit" value="Sync" />
+			</form>
 		</p>
 	</div>
 	<div>
@@ -303,6 +319,16 @@ class mgi
 	}
 </script>
 <?php
+	}
+	/**
+	 * Sync from url
+	 */
+	public function admin_syncurl()
+	{
+		$url = $_POST['url'];
+		$id = $url ? $this->sync_archive('added', 'url;'.$url) : 0;
+		$msg = $id ? __('Sync Success') : __('Sync Error');
+		$this->message($msg, 'op=status');
 	}
 	/**
 	 * Ajax 异步同步
@@ -530,7 +556,7 @@ class mgi
 		$data = array_merge(array(
 			'post_name' => $archive['uri']['slug'],
 			'post_title' => $archive['title'],
-			'post_content' => $archive['content'],
+			'post_content' => $this->md2html($archive['content']),
 			'post_date' => $archive['meta']['time'],
 			'post_status' => 'publish',
 			'post_author' => $userID
@@ -833,6 +859,34 @@ class mgi
 		return $v;
 	}
 	/**
+	 * Transfer MarkDown to HTML
+	 * @param type $stream
+	 */
+	private function md2html($stream)
+	{
+		$api = $this->mdengine();
+		if ($api)
+		{
+			return $api->transfer($stream);
+		}
+		else
+		{
+			return $stream;
+		}
+	}
+	/**
+	 * MD Engine
+	 */
+	private function mdengine()
+	{
+		static $class_loaded = false;
+		if (!$class_loaded)
+		{
+			require plugin_dir_path(__FILE__).'md-engine/api.php';
+		}
+		return mdEngineAPI::instance();
+	}
+	/**
 	 * END - HALT
 	 * @param type $msg
 	 */
@@ -844,6 +898,51 @@ class mgi
 		echo print_r($expand);
 		echo '</pre>';
 		exit;
+	}
+	/**
+	 * Message Display
+	 * @param type $msg
+	 * @param type $url
+	 */
+	public function message($msg, $url = null)
+	{
+		if ($url)
+		{
+			$url = admin_url('plugins.php?page='.$this->mgr_link.'&'.$url);
+		}
+?>
+<style type="text/css">
+	.message-box {
+		margin: 20px 10px;
+	}
+	.message-box .title {
+		padding: 10px;
+		border-bottom: 2px solid #ccc;
+		font-size: 20px;
+		font-weight: bold;
+		clear: both;
+	}
+	.message {
+		padding: 20px;
+	}
+</style>
+<div class="message-box">
+	<div>
+		<p class="title"><?php echo __('Message'); ?></p>
+		<p class="message">
+			<?php echo $msg; ?>
+		</p>
+	</div>
+</div>
+<?php if ($url) { ?>
+<div class="message-box">
+	.....<br/>
+	<?php echo $url; ?>
+</div>
+<script type="text/javascript">
+	setTimeout(function() { window.location = "<?php echo $url; ?>"; } , 3000);
+</script>
+<?php }
 	}
 }
 
